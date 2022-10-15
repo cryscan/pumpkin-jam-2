@@ -188,7 +188,7 @@ fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    _asset_server: Res<AssetServer>,
+    asset_server: Res<AssetServer>,
 ) {
     // Plane
     commands
@@ -350,8 +350,9 @@ fn setup_scene(
                 .into(),
             ),
             material: materials.add(StandardMaterial {
-                base_color: Color::rgb(0.6, 0.7, 0.8),
-                emissive: Color::rgba(0.8, 0.7, 0.6, 1.0),
+                base_color_texture: Some(asset_server.load("earth_daymap.jpg")),
+                emissive: Color::rgba(1.0, 1.0, 1.0, 1.0),
+                emissive_texture: Some(asset_server.load("earth_daymap.jpg")),
                 perceptual_roughness: 0.9,
                 ..default()
             }),
