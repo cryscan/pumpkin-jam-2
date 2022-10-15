@@ -213,7 +213,7 @@ fn setup_scene(
     commands
         .spawn_bundle(SpatialBundle {
             transform: Transform {
-                translation: Vec3::new(0.5 * GROUND_SIZE, 0.0, 0.0),
+                translation: Vec3::new(0.5 * GROUND_SIZE, 0.5 * GROUND_SIZE, 0.0),
                 rotation: Quat::from_rotation_z(PI / 2.0),
                 ..default()
             },
@@ -239,7 +239,7 @@ fn setup_scene(
     commands
         .spawn_bundle(SpatialBundle {
             transform: Transform {
-                translation: Vec3::new(-0.5 * GROUND_SIZE, 0.0, 0.0),
+                translation: Vec3::new(-0.5 * GROUND_SIZE, 0.5 * GROUND_SIZE, 0.0),
                 rotation: Quat::from_rotation_z(-PI / 2.0),
                 ..default()
             },
@@ -265,7 +265,7 @@ fn setup_scene(
     commands
         .spawn_bundle(SpatialBundle {
             transform: Transform {
-                translation: Vec3::new(0.0, 0.0, -0.5 * GROUND_SIZE),
+                translation: Vec3::new(0.0, 0.5 * GROUND_SIZE, -0.5 * GROUND_SIZE),
                 rotation: Quat::from_rotation_x(PI / 2.0),
                 ..default()
             },
@@ -291,7 +291,7 @@ fn setup_scene(
     commands
         .spawn_bundle(SpatialBundle {
             transform: Transform {
-                translation: Vec3::new(0.0, 0.0, 0.5 * GROUND_SIZE),
+                translation: Vec3::new(0.0, 0.5 * GROUND_SIZE, 0.5 * GROUND_SIZE),
                 rotation: Quat::from_rotation_x(-PI / 2.0),
                 ..default()
             },
@@ -372,7 +372,7 @@ fn setup_scene(
     // Only directional light is supported
     commands.spawn_bundle(DirectionalLightBundle {
         directional_light: DirectionalLight {
-            illuminance: 10000.0,
+            illuminance: 1.0,
             ..default()
         },
         transform: Transform {
@@ -418,7 +418,7 @@ fn setup_scene(
                 .with_children(|parent| {
                     parent
                         .spawn_bundle(TransformBundle {
-                            local: Transform::from_xyz(1.0, 1.0, -1.0),
+                            local: Transform::from_xyz(1.0, 1.0, -2.0),
                             ..default()
                         })
                         .insert(PlayerCatcher);
