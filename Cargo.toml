@@ -9,7 +9,9 @@ resolver = "2"
 [dependencies]
 bevy = { version = "0.8", default-features = true }
 leafwing-input-manager = "0.5"
-bevy_rapier3d = "0.17"
+bevy_rapier3d = "0.16.2"
 bevy_kira_audio = "0.12"
 bevy-hikari = "0.2"
 bevy-inspector-egui = "0.13"
+smooth-bevy-cameras = "0.5"
+bevy_mod_wanderlust = "0.2"

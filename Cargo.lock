@@ -119,6 +119,15 @@ checksum = "98161a4e3e2184da77bb14f02184cdd111e83bbbcc9979dfee3c44b9a85f5602"
 
 [[package]]
 name = "approx"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f2a05fd1bd10b2527e20a2cd32d8873d115b8b39fe219ee25f42a8aca6ba278"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cab112f0a86d568ea0e627cc1d6be74a1e9cd55214684db5561995f6dad897c6"
@@ -613,6 +622,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_mod_wanderlust"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5f035ca654e955873a627188d886a5f67969257da65bdbdde41ef2315c11a4a"
+dependencies = [
+ "bevy",
+ "bevy_rapier3d",
+]
+
+[[package]]
 name = "bevy_pbr"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -641,9 +660,9 @@ checksum = "9960c19e582b43cebe1894b6679520a4f50802d1cc5b6fa432f8d685ed232f09"
 
 [[package]]
 name = "bevy_rapier3d"
-version = "0.17.0"
+version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e34cffd065dbb111fad1cdeac471690d1f4e17418973fd6be5a0c743497f5f72"
+checksum = "e9fd7a0ffc55bf7c127f9e1877481c57d42ff0f04530550cdf209dd136485ecb"
 dependencies = [
  "bevy",
  "bitflags",
@@ -914,7 +933,7 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98b15fee4b75472e3441b0c7221467303e4ce59b342a94a328e447e7cdb5a43c"
 dependencies = [
- "approx",
+ "approx 0.5.1",
  "bevy_app",
  "bevy_ecs",
  "bevy_input",
@@ -986,7 +1005,7 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb55f7efa17f94f3c2ecb1fe81e887b280a392861abde9f32d06529d29296bd2"
 dependencies = [
- "approx",
+ "approx 0.5.1",
  "glam",
  "log",
  "num",
@@ -1836,7 +1855,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc32c2334f00ca5ac3695c5009ae35da21da8c62d255b5b96d56e2597a637a38"
 dependencies = [
  "ab_glyph",
- "approx",
+ "approx 0.5.1",
  "xi-unicode",
 ]
 
@@ -2402,7 +2421,7 @@ version = "0.31.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da388c517f7c8540918d00f7aed9864c1ead01a14a0cc21513b171857119de12"
 dependencies = [
- "approx",
+ "approx 0.5.1",
  "glam",
  "matrixmultiply",
  "nalgebra-macros",
@@ -2880,11 +2899,11 @@ dependencies = [
 
 [[package]]
 name = "parry3d"
-version = "0.10.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2420ecc938f3acf004ca7f5059aca5145324a88525879745e18ba6ea785d793"
+checksum = "89cd07f0e1e9e207662f430a4e758c357fdf89450a548ef1ce59113822fd5fa7"
 dependencies = [
- "approx",
+ "approx 0.5.1",
  "arrayvec",
  "bitflags",
  "downcast-rs",
@@ -3027,8 +3046,10 @@ dependencies = [
  "bevy-hikari",
  "bevy-inspector-egui",
  "bevy_kira_audio",
+ "bevy_mod_wanderlust",
  "bevy_rapier3d",
  "leafwing-input-manager",
+ "smooth-bevy-cameras",
 ]
 
 [[package]]
@@ -3084,11 +3105,11 @@ checksum = "63e935c45e09cc6dcf00d2f0b2d630a58f4095320223d47fc68918722f0538b6"
 
 [[package]]
 name = "rapier3d"
-version = "0.15.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3393d49fd2b9a66cba62e45a778a59f73cbed56afff461a5dda32d3b630fd029"
+checksum = "32f2decdbd39b70bfb3a5dc9e725ea0465b39401052cc8b03c0f81206f4b9129"
 dependencies = [
- "approx",
+ "approx 0.5.1",
  "arrayvec",
  "bit-vec",
  "bitflags",
@@ -3305,7 +3326,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c48e45e5961033db030b56ad67aef22e9c908c493a6e8348c0a0f6b93433cd77"
 dependencies = [
- "approx",
+ "approx 0.5.1",
  "num-complex",
  "num-traits",
  "paste",
@@ -3336,6 +3357,17 @@ version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "smooth-bevy-cameras"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "554fda47731b27d19f6536f4a6e5097d72c15f31dd5c322ff140f0d1cb67460c"
+dependencies = [
+ "approx 0.4.0",
+ "bevy",
  "serde",
 ]
 
