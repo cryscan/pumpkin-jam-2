@@ -23,18 +23,21 @@ const RENDER_IMAGE_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Image::TYPE_UUID, 1145141919810);
 
 const GROUND_SIZE: f32 = 100.0;
-const _BALL_RADIUS: f32 = 0.5;
-const CUBE_SIZE: f32 = 0.5;
+const BALL_RADIUS: f32 = 0.5;
+const CUBE_SIZE: f32 = 1.0;
 
 fn main() {
     App::new()
         .register_type::<Player>()
         .register_type::<PlayerCamera>()
+        .register_type::<PlayerCatcher>()
+        .register_type::<CatchObject>()
         .insert_resource(WindowDescriptor {
             width: 1280.,
             height: 720.,
             ..Default::default()
         })
+        .insert_resource(ClearColor(Color::rgba(0.1, 0.1, 0.1, 1.0)))
         .insert_resource(HikariConfig {
             validation_interval: 1,
             emissive_threshold: 0.01,
@@ -50,9 +53,10 @@ fn main() {
         .add_startup_system(setup_render.exclusive_system())
         .add_startup_system(lock_release_cursor)
         .add_startup_system(setup_scene)
-        .add_system(bevy::window::close_on_esc)
+        .add_system(toggle_release_cursor)
         .add_system(player_move)
         .add_system(player_look)
+        .add_system(player_catch)
         .run();
 }
 
@@ -60,6 +64,15 @@ fn lock_release_cursor(mut windows: ResMut<Windows>) {
     if let Some(window) = windows.get_primary_mut() {
         window.set_cursor_lock_mode(true);
         window.set_cursor_visibility(false);
+    }
+}
+
+fn toggle_release_cursor(mut windows: ResMut<Windows>, keys: Res<Input<KeyCode>>) {
+    if let Some(window) = windows.get_primary_mut() {
+        if keys.just_pressed(KeyCode::Escape) {
+            window.set_cursor_lock_mode(!window.cursor_locked());
+            window.set_cursor_visibility(!window.cursor_visible());
+        }
     }
 }
 
@@ -135,20 +148,26 @@ fn setup_render(
 pub enum Action {
     Move,
     Look,
+    Jump,
+    Catch,
 }
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
 pub struct Player {
-    pub speed: f32,
     pub sensitivity: Vec2,
+    pub speed: f32,
+    pub max_catch_speed: f32,
+    pub throw_speed: f32,
 }
 
 impl Default for Player {
     fn default() -> Self {
         Self {
-            speed: 1.0,
             sensitivity: Vec2::new(0.1, 0.1),
+            speed: 1.0,
+            max_catch_speed: 100.0,
+            throw_speed: 200.0,
         }
     }
 }
@@ -156,6 +175,14 @@ impl Default for Player {
 #[derive(Default, Component, Reflect)]
 #[reflect(Component)]
 pub struct PlayerCamera;
+
+#[derive(Default, Component, Reflect)]
+#[reflect(Component)]
+pub struct PlayerCatcher;
+
+#[derive(Default, Component, Reflect)]
+#[reflect(Component)]
+pub struct CatchObject;
 
 fn setup_scene(
     mut commands: Commands,
@@ -165,77 +192,182 @@ fn setup_scene(
 ) {
     // Plane
     commands
-        .spawn_bundle(PbrBundle {
-            mesh: meshes.add(shape::Plane { size: GROUND_SIZE }.into()),
-            material: materials.add(StandardMaterial {
-                base_color: Color::rgb(0.8, 0.7, 0.6),
-                perceptual_roughness: 0.9,
+        .spawn_bundle(SpatialBundle::default())
+        .insert(Collider::cuboid(GROUND_SIZE * 0.5, 1.0, GROUND_SIZE * 0.5))
+        .with_children(|parent| {
+            parent
+                .spawn_bundle(PbrBundle {
+                    mesh: meshes.add(shape::Plane { size: GROUND_SIZE }.into()),
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::rgb(0.8, 0.7, 0.6),
+                        perceptual_roughness: 0.9,
+                        ..default()
+                    }),
+                    transform: Transform::from_xyz(0.0, 1.0, 0.0),
+                    ..default()
+                })
+                .insert(RENDER_PASS_LAYER);
+        });
+
+    // Right
+    commands
+        .spawn_bundle(SpatialBundle {
+            transform: Transform {
+                translation: Vec3::new(0.5 * GROUND_SIZE, 0.0, 0.0),
+                rotation: Quat::from_rotation_z(PI / 2.0),
                 ..default()
-            }),
+            },
             ..default()
         })
-        .insert(Collider::cuboid(GROUND_SIZE * 0.5, 0.01, GROUND_SIZE * 0.5))
-        .insert(RENDER_PASS_LAYER);
+        .insert(Collider::cuboid(GROUND_SIZE * 0.5, 1.0, GROUND_SIZE * 0.5))
+        .with_children(|parent| {
+            parent
+                .spawn_bundle(PbrBundle {
+                    mesh: meshes.add(shape::Plane { size: GROUND_SIZE }.into()),
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::rgb(0.8, 0.7, 0.6),
+                        perceptual_roughness: 0.9,
+                        ..default()
+                    }),
+                    transform: Transform::from_xyz(0.0, 1.0, 0.0),
+                    ..default()
+                })
+                .insert(RENDER_PASS_LAYER);
+        });
+
+    // Left
+    commands
+        .spawn_bundle(SpatialBundle {
+            transform: Transform {
+                translation: Vec3::new(-0.5 * GROUND_SIZE, 0.0, 0.0),
+                rotation: Quat::from_rotation_z(-PI / 2.0),
+                ..default()
+            },
+            ..default()
+        })
+        .insert(Collider::cuboid(GROUND_SIZE * 0.5, 1.0, GROUND_SIZE * 0.5))
+        .with_children(|parent| {
+            parent
+                .spawn_bundle(PbrBundle {
+                    mesh: meshes.add(shape::Plane { size: GROUND_SIZE }.into()),
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::rgb(0.8, 0.7, 0.6),
+                        perceptual_roughness: 0.9,
+                        ..default()
+                    }),
+                    transform: Transform::from_xyz(0.0, 1.0, 0.0),
+                    ..default()
+                })
+                .insert(RENDER_PASS_LAYER);
+        });
+
+    // Forward
+    commands
+        .spawn_bundle(SpatialBundle {
+            transform: Transform {
+                translation: Vec3::new(0.0, 0.0, -0.5 * GROUND_SIZE),
+                rotation: Quat::from_rotation_x(PI / 2.0),
+                ..default()
+            },
+            ..default()
+        })
+        .insert(Collider::cuboid(GROUND_SIZE * 0.5, 1.0, GROUND_SIZE * 0.5))
+        .with_children(|parent| {
+            parent
+                .spawn_bundle(PbrBundle {
+                    mesh: meshes.add(shape::Plane { size: GROUND_SIZE }.into()),
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::rgb(0.8, 0.7, 0.6),
+                        perceptual_roughness: 0.9,
+                        ..default()
+                    }),
+                    transform: Transform::from_xyz(0.0, 1.0, 0.0),
+                    ..default()
+                })
+                .insert(RENDER_PASS_LAYER);
+        });
+
+    // Backward
+    commands
+        .spawn_bundle(SpatialBundle {
+            transform: Transform {
+                translation: Vec3::new(0.0, 0.0, 0.5 * GROUND_SIZE),
+                rotation: Quat::from_rotation_x(-PI / 2.0),
+                ..default()
+            },
+            ..default()
+        })
+        .insert(Collider::cuboid(GROUND_SIZE * 0.5, 1.0, GROUND_SIZE * 0.5))
+        .with_children(|parent| {
+            parent
+                .spawn_bundle(PbrBundle {
+                    mesh: meshes.add(shape::Plane { size: GROUND_SIZE }.into()),
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::rgb(0.8, 0.7, 0.6),
+                        perceptual_roughness: 0.9,
+                        ..default()
+                    }),
+                    transform: Transform::from_xyz(0.0, 1.0, 0.0),
+                    ..default()
+                })
+                .insert(RENDER_PASS_LAYER);
+        });
 
     // Cubes
+    let cube_mesh = meshes.add(shape::Cube::new(CUBE_SIZE).into());
     for id in -3..=3 {
         commands
             .spawn_bundle(PbrBundle {
-                mesh: meshes.add(shape::Cube::new(CUBE_SIZE).into()),
+                mesh: cube_mesh.clone(),
                 material: materials.add(StandardMaterial {
                     base_color: Color::rgb(0.6, 0.7, 0.8),
                     perceptual_roughness: 0.9,
                     ..default()
                 }),
-                transform: Transform::from_xyz(CUBE_SIZE * id as f32, 1.0, -6.0),
+                transform: Transform::from_xyz(CUBE_SIZE * id as f32, 2.0, -6.0),
                 ..default()
             })
             .insert_bundle((
                 RigidBody::Dynamic,
                 Collider::cuboid(CUBE_SIZE * 0.5, CUBE_SIZE * 0.5, CUBE_SIZE * 0.5),
+                ReadMassProperties::default(),
+                Velocity::default(),
+                ExternalImpulse::default(),
+                Ccd::enabled(),
+                // CatchObject,
             ))
             .insert(RENDER_PASS_LAYER);
     }
 
+    // Sphere
     commands
         .spawn_bundle(PbrBundle {
-            mesh: meshes.add(shape::Cube::new(CUBE_SIZE).into()),
+            mesh: meshes.add(
+                shape::Icosphere {
+                    radius: BALL_RADIUS,
+                    subdivisions: 3,
+                }
+                .into(),
+            ),
             material: materials.add(StandardMaterial {
                 base_color: Color::rgb(0.6, 0.7, 0.8),
-                emissive: Color::rgba(0.8, 0.7, 0.6, 0.5),
+                emissive: Color::rgba(0.8, 0.7, 0.6, 1.0),
                 perceptual_roughness: 0.9,
                 ..default()
             }),
-            transform: Transform::from_xyz(0.0, 1.0, -2.0),
+            transform: Transform::from_xyz(0.0, 2.0, -2.0),
             ..default()
         })
         .insert_bundle((
             RigidBody::Dynamic,
-            Collider::cuboid(CUBE_SIZE * 0.5, CUBE_SIZE * 0.5, CUBE_SIZE * 0.5),
+            Collider::ball(BALL_RADIUS),
+            ReadMassProperties::default(),
+            Velocity::default(),
+            ExternalImpulse::default(),
+            Ccd::enabled(),
+            CatchObject,
         ))
         .insert(RENDER_PASS_LAYER);
-
-    // Sphere
-    // commands
-    //     .spawn_bundle(PbrBundle {
-    //         mesh: meshes.add(
-    //             shape::Icosphere {
-    //                 radius: BALL_RADIUS,
-    //                 subdivisions: 3,
-    //             }
-    //             .into(),
-    //         ),
-    //         material: materials.add(StandardMaterial {
-    //             base_color: Color::rgb(0.6, 0.7, 0.8),
-    //             emissive: Color::rgba(0.6, 0.7, 0.8, 0.5),
-    //             perceptual_roughness: 0.9,
-    //             ..default()
-    //         }),
-    //         transform: Transform::from_xyz(10.0, 1.0, -2.0),
-    //         ..default()
-    //     })
-    //     .insert_bundle((RigidBody::Dynamic, Collider::ball(BALL_RADIUS)))
-    //     .insert(RENDER_PASS_LAYER);
 
     // Only directional light is supported
     commands.spawn_bundle(DirectionalLightBundle {
@@ -253,22 +385,18 @@ fn setup_scene(
 
     // Player
     commands
-        .spawn_bundle(CharacterControllerBundle::default())
-        // .insert_bundle(PbrBundle {
-        //     mesh: meshes.add(shape::Capsule::default().into()),
-        //     material: materials.add(StandardMaterial {
-        //         base_color: Color::rgb(0.6, 0.7, 0.8),
-        //         perceptual_roughness: 0.9,
-        //         ..default()
-        //     }),
-        //     ..default()
-        // })
+        .spawn_bundle(CharacterControllerBundle {
+            transform: Transform::from_xyz(0.0, 2.0, 0.0),
+            ..default()
+        })
         .insert_bundle(InputManagerBundle::<Action> {
             input_map: InputMap::default()
                 .insert(VirtualDPad::wasd(), Action::Move)
                 .insert(DualAxis::left_stick(), Action::Move)
                 .insert(DualAxis::mouse_motion(), Action::Look)
                 .insert(DualAxis::right_stick(), Action::Look)
+                .insert(KeyCode::Space, Action::Jump)
+                .insert(MouseButton::Right, Action::Catch)
                 .build(),
             ..default()
         })
@@ -283,11 +411,18 @@ fn setup_scene(
                         ..default()
                     },
                     camera_render_graph: CameraRenderGraph::new(bevy_hikari::graph::NAME),
-                    // transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
                     ..default()
                 })
                 .insert(RENDER_PASS_LAYER)
-                .insert(PlayerCamera);
+                .insert(PlayerCamera)
+                .with_children(|parent| {
+                    parent
+                        .spawn_bundle(TransformBundle {
+                            local: Transform::from_xyz(1.0, 1.0, -1.0),
+                            ..default()
+                        })
+                        .insert(PlayerCatcher);
+                });
         });
 }
 
@@ -306,6 +441,7 @@ fn player_move(
         direction = camera.right() * axis.x + camera.forward() * axis.y;
     }
     controller.movement = player.speed * direction.normalize_or_zero();
+    controller.jumping = action_state.pressed(Action::Jump);
 }
 
 fn player_look(
@@ -324,4 +460,52 @@ fn player_look(
 
     camera.rotate_x(player.sensitivity.y * delta.y.to_radians());
     body.rotate_y(player.sensitivity.x * delta.x.to_radians());
+}
+
+fn player_catch(
+    mut queries: ParamSet<(
+        Query<(&ActionState<Action>, &Player)>,
+        Query<&GlobalTransform, With<PlayerCatcher>>,
+        Query<
+            (
+                &mut ExternalImpulse,
+                &Velocity,
+                &ReadMassProperties,
+                &GlobalTransform,
+            ),
+            With<CatchObject>,
+        >,
+    )>,
+) {
+    let player_query = queries.p0();
+    let (action_state, player) = player_query.single();
+
+    let catch_pressed = action_state.pressed(Action::Catch);
+    let catch_just_released = action_state.just_released(Action::Catch);
+
+    let max_catch_speed = player.max_catch_speed;
+    let throw_speed = player.throw_speed;
+
+    let catcher_query = queries.p1();
+    let catcher_transform = catcher_query.single();
+    let catcher_position = catcher_transform.translation();
+    let catcher_direction = catcher_transform.forward();
+
+    // Find the closest catch object
+    if let Some((mut impulse, velocity, mass, transform)) =
+        queries.p2().iter_mut().min_by_key(|(_, _, _, transform)| {
+            transform.translation().distance_squared(catcher_position) as u32
+        })
+    {
+        let delta_position = catcher_position - transform.translation();
+        if catch_pressed {
+            let speed = (10.0 * delta_position.length_squared()).min(max_catch_speed);
+            let delta_velocity = delta_position.normalize_or_zero() * speed - velocity.linvel;
+            impulse.impulse = delta_velocity * mass.0.mass;
+        } else if catch_just_released {
+            let speed = 1.0 / (delta_position.length_squared() + 1.0) * throw_speed;
+            let delta_velocity = catcher_direction * speed;
+            impulse.impulse = delta_velocity * mass.0.mass;
+        }
+    }
 }
