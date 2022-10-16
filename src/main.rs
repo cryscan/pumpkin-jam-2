@@ -43,8 +43,6 @@ fn main() {
         .insert_resource(HikariConfig {
             validation_interval: 1,
             emissive_threshold: 0.01,
-            max_temporal_reuse_count: 25,
-            spatial_denoise: false,
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -188,6 +186,13 @@ pub struct PlayerCatcher;
 #[derive(Default, Component, Reflect)]
 #[reflect(Component)]
 pub struct CatchObject;
+
+#[derive(Default, Component, Reflect)]
+#[reflect(Component)]
+pub struct EmissiveObject {
+    timer: Timer,
+    emissive: f32,
+}
 
 fn setup_scene(
     mut commands: Commands,
