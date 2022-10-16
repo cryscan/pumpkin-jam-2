@@ -235,9 +235,7 @@ dependencies = [
 
 [[package]]
 name = "bevy-hikari"
-version = "0.2.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c78272dd804162969e7e0b15b4b4c3cfe7b5ae242ffeee51a5eedc8b5f6845ef"
+version = "0.2.11"
 dependencies = [
  "bevy",
  "bitflags",
@@ -2171,9 +2169,9 @@ dependencies = [
 
 [[package]]
 name = "kqueue"
-version = "1.0.6"
+version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d6112e8f37b59803ac47a42d14f1f3a59bbf72fc6857ffc5be455e28a691f8e"
+checksum = "2c8fc60ba15bf51257aa9807a48a61013db043fcf3a78cb0d916e8e396dcad98"
 dependencies = [
  "kqueue-sys",
  "libc",

@@ -10,7 +10,7 @@ use bevy::{
     },
     sprite::MaterialMesh2dBundle,
 };
-use bevy_hikari::{prelude::*, HikariConfig};
+use bevy_hikari::prelude::*;
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_mod_wanderlust::{CharacterControllerBundle, ControllerInput, WanderlustPlugin};
 use bevy_rapier3d::prelude::*;
@@ -23,8 +23,10 @@ const RENDER_IMAGE_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Image::TYPE_UUID, 1145141919810);
 
 const GROUND_SIZE: f32 = 100.0;
-const BALL_RADIUS: f32 = 0.5;
+const CENTER_PILLAR_SIZE: f32 = 20.0;
 const CUBE_SIZE: f32 = 1.0;
+
+const LIGHT_ROTATION_SPEED: f32 = 0.1;
 
 fn main() {
     App::new()
@@ -41,6 +43,8 @@ fn main() {
         .insert_resource(HikariConfig {
             validation_interval: 1,
             emissive_threshold: 0.01,
+            max_temporal_reuse_count: 25,
+            spatial_denoise: false,
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -57,6 +61,7 @@ fn main() {
         .add_system(player_move)
         .add_system(player_look)
         .add_system(player_catch)
+        .add_system(light_rotate_system)
         .run();
 }
 
@@ -188,12 +193,12 @@ fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    asset_server: Res<AssetServer>,
+    _asset_server: Res<AssetServer>,
 ) {
     // Plane
     commands
         .spawn_bundle(SpatialBundle::default())
-        .insert(Collider::cuboid(GROUND_SIZE * 0.5, 1.0, GROUND_SIZE * 0.5))
+        .insert(Collider::cuboid(0.5 * GROUND_SIZE, 1.0, 0.5 * GROUND_SIZE))
         .with_children(|parent| {
             parent
                 .spawn_bundle(PbrBundle {
@@ -209,17 +214,25 @@ fn setup_scene(
                 .insert(RENDER_PASS_LAYER);
         });
 
+    // Top
+    commands
+        .spawn_bundle(SpatialBundle {
+            transform: Transform::from_xyz(0.0, GROUND_SIZE * 0.5, 0.0),
+            ..default()
+        })
+        .insert(Collider::cuboid(0.5 * GROUND_SIZE, 1.0, 0.5 * GROUND_SIZE));
+
     // Right
     commands
         .spawn_bundle(SpatialBundle {
             transform: Transform {
-                translation: Vec3::new(0.5 * GROUND_SIZE, 0.5 * GROUND_SIZE, 0.0),
+                translation: Vec3::new(0.5 * GROUND_SIZE, 0.0, 0.0),
                 rotation: Quat::from_rotation_z(PI / 2.0),
                 ..default()
             },
             ..default()
         })
-        .insert(Collider::cuboid(GROUND_SIZE * 0.5, 1.0, GROUND_SIZE * 0.5))
+        .insert(Collider::cuboid(0.5 * GROUND_SIZE, 1.0, 0.5 * GROUND_SIZE))
         .with_children(|parent| {
             parent
                 .spawn_bundle(PbrBundle {
@@ -239,13 +252,13 @@ fn setup_scene(
     commands
         .spawn_bundle(SpatialBundle {
             transform: Transform {
-                translation: Vec3::new(-0.5 * GROUND_SIZE, 0.5 * GROUND_SIZE, 0.0),
+                translation: Vec3::new(-0.5 * GROUND_SIZE, 0.0, 0.0),
                 rotation: Quat::from_rotation_z(-PI / 2.0),
                 ..default()
             },
             ..default()
         })
-        .insert(Collider::cuboid(GROUND_SIZE * 0.5, 1.0, GROUND_SIZE * 0.5))
+        .insert(Collider::cuboid(0.5 * GROUND_SIZE, 1.0, 0.5 * GROUND_SIZE))
         .with_children(|parent| {
             parent
                 .spawn_bundle(PbrBundle {
@@ -265,13 +278,13 @@ fn setup_scene(
     commands
         .spawn_bundle(SpatialBundle {
             transform: Transform {
-                translation: Vec3::new(0.0, 0.5 * GROUND_SIZE, -0.5 * GROUND_SIZE),
+                translation: Vec3::new(0.0, 0.0, -0.5 * GROUND_SIZE),
                 rotation: Quat::from_rotation_x(PI / 2.0),
                 ..default()
             },
             ..default()
         })
-        .insert(Collider::cuboid(GROUND_SIZE * 0.5, 1.0, GROUND_SIZE * 0.5))
+        .insert(Collider::cuboid(0.5 * GROUND_SIZE, 1.0, 0.5 * GROUND_SIZE))
         .with_children(|parent| {
             parent
                 .spawn_bundle(PbrBundle {
@@ -291,13 +304,13 @@ fn setup_scene(
     commands
         .spawn_bundle(SpatialBundle {
             transform: Transform {
-                translation: Vec3::new(0.0, 0.5 * GROUND_SIZE, 0.5 * GROUND_SIZE),
+                translation: Vec3::new(0.0, 0.0, 0.5 * GROUND_SIZE),
                 rotation: Quat::from_rotation_x(-PI / 2.0),
                 ..default()
             },
             ..default()
         })
-        .insert(Collider::cuboid(GROUND_SIZE * 0.5, 1.0, GROUND_SIZE * 0.5))
+        .insert(Collider::cuboid(0.5 * GROUND_SIZE, 1.0, 0.5 * GROUND_SIZE))
         .with_children(|parent| {
             parent
                 .spawn_bundle(PbrBundle {
@@ -313,18 +326,50 @@ fn setup_scene(
                 .insert(RENDER_PASS_LAYER);
         });
 
+    // Center
+    commands
+        .spawn_bundle(SpatialBundle {
+            transform: Transform {
+                translation: Vec3::new(0.0, 0.25 * GROUND_SIZE, 0.0),
+                ..default()
+            },
+            ..default()
+        })
+        .insert(Collider::cuboid(
+            0.5 * CENTER_PILLAR_SIZE,
+            0.5 * GROUND_SIZE,
+            0.5 * CENTER_PILLAR_SIZE,
+        ))
+        .with_children(|parent| {
+            parent
+                .spawn_bundle(PbrBundle {
+                    mesh: meshes.add(
+                        shape::Box::new(CENTER_PILLAR_SIZE, 0.5 * GROUND_SIZE, CENTER_PILLAR_SIZE)
+                            .into(),
+                    ),
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::rgb(0.8, 0.7, 0.6),
+                        perceptual_roughness: 0.9,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .insert(RENDER_PASS_LAYER);
+        });
+
     // Cubes
     let cube_mesh = meshes.add(shape::Cube::new(CUBE_SIZE).into());
-    for id in -3..=3 {
+    for id in 0..10 {
         commands
             .spawn_bundle(PbrBundle {
                 mesh: cube_mesh.clone(),
                 material: materials.add(StandardMaterial {
                     base_color: Color::rgb(0.6, 0.7, 0.8),
+                    emissive: Color::rgba(0.8, 0.7, 0.6, 0.5),
                     perceptual_roughness: 0.9,
                     ..default()
                 }),
-                transform: Transform::from_xyz(CUBE_SIZE * id as f32, 2.0, -6.0),
+                transform: Transform::from_xyz(0.0, 2.0 + CUBE_SIZE * id as f32, 15.0),
                 ..default()
             })
             .insert_bundle((
@@ -334,51 +379,51 @@ fn setup_scene(
                 Velocity::default(),
                 ExternalImpulse::default(),
                 Ccd::enabled(),
-                // CatchObject,
+                CatchObject,
             ))
             .insert(RENDER_PASS_LAYER);
     }
 
     // Sphere
-    commands
-        .spawn_bundle(PbrBundle {
-            mesh: meshes.add(
-                shape::Icosphere {
-                    radius: BALL_RADIUS,
-                    subdivisions: 3,
-                }
-                .into(),
-            ),
-            material: materials.add(StandardMaterial {
-                base_color_texture: Some(asset_server.load("earth_daymap.jpg")),
-                emissive: Color::rgba(1.0, 1.0, 1.0, 1.0),
-                emissive_texture: Some(asset_server.load("earth_daymap.jpg")),
-                perceptual_roughness: 0.9,
-                ..default()
-            }),
-            transform: Transform::from_xyz(0.0, 2.0, -2.0),
-            ..default()
-        })
-        .insert_bundle((
-            RigidBody::Dynamic,
-            Collider::ball(BALL_RADIUS),
-            ReadMassProperties::default(),
-            Velocity::default(),
-            ExternalImpulse::default(),
-            Ccd::enabled(),
-            CatchObject,
-        ))
-        .insert(RENDER_PASS_LAYER);
+    // commands
+    //     .spawn_bundle(PbrBundle {
+    //         mesh: meshes.add(
+    //             shape::Icosphere {
+    //                 radius: BALL_RADIUS,
+    //                 subdivisions: 3,
+    //             }
+    //             .into(),
+    //         ),
+    //         material: materials.add(StandardMaterial {
+    //             base_color_texture: Some(asset_server.load("earth_daymap.jpg")),
+    //             emissive: Color::rgba(1.0, 1.0, 1.0, 1.0),
+    //             emissive_texture: Some(asset_server.load("earth_daymap.jpg")),
+    //             perceptual_roughness: 0.9,
+    //             ..default()
+    //         }),
+    //         transform: Transform::from_xyz(0.0, 2.0, -2.0),
+    //         ..default()
+    //     })
+    //     .insert_bundle((
+    //         RigidBody::Dynamic,
+    //         Collider::ball(BALL_RADIUS),
+    //         ReadMassProperties::default(),
+    //         Velocity::default(),
+    //         ExternalImpulse::default(),
+    //         Ccd::enabled(),
+    //         CatchObject,
+    //     ))
+    //     .insert(RENDER_PASS_LAYER);
 
     // Only directional light is supported
     commands.spawn_bundle(DirectionalLightBundle {
         directional_light: DirectionalLight {
-            illuminance: 1.0,
+            illuminance: 10000.0,
             ..default()
         },
         transform: Transform {
             translation: Vec3::new(0.0, 5.0, 0.0),
-            rotation: Quat::from_euler(EulerRot::XYZ, -PI / 4.0, PI / 4.0, 0.0),
+            rotation: Quat::from_euler(EulerRot::XYZ, -PI / 6.0, 0.0, 0.0),
             ..default()
         },
         ..default()
@@ -387,7 +432,7 @@ fn setup_scene(
     // Player
     commands
         .spawn_bundle(CharacterControllerBundle {
-            transform: Transform::from_xyz(0.0, 2.0, 0.0),
+            transform: Transform::from_xyz(0.0, 2.0, 20.0),
             ..default()
         })
         .insert_bundle(InputManagerBundle::<Action> {
@@ -508,5 +553,11 @@ fn player_catch(
             let delta_velocity = catcher_direction * speed;
             impulse.impulse = delta_velocity * mass.0.mass;
         }
+    }
+}
+
+fn light_rotate_system(time: Res<Time>, mut query: Query<&mut Transform, With<DirectionalLight>>) {
+    for mut transform in &mut query {
+        transform.rotate_y(LIGHT_ROTATION_SPEED * time.delta_seconds());
     }
 }
