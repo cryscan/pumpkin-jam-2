@@ -17,6 +17,7 @@ use bevy_rapier3d::prelude::*;
 use leafwing_input_manager::prelude::*;
 use std::f32::consts::PI;
 
+/// This controls the resolution.
 const RENDER_SIZE: [u32; 2] = [320, 180];
 const RENDER_PASS_LAYER: RenderLayers = RenderLayers::layer(1);
 const RENDER_IMAGE_HANDLE: HandleUntyped =
@@ -42,7 +43,6 @@ fn main() {
         .insert_resource(ClearColor(Color::rgba(0.1, 0.1, 0.1, 1.0)))
         .insert_resource(HikariConfig {
             validation_interval: 1,
-            emissive_threshold: 0.01,
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -370,7 +370,7 @@ fn setup_scene(
                 mesh: cube_mesh.clone(),
                 material: materials.add(StandardMaterial {
                     base_color: Color::rgb(0.6, 0.7, 0.8),
-                    emissive: Color::rgba(0.8, 0.7, 0.6, 0.5),
+                    emissive: Color::rgba(0.8, 0.7, 0.6, 0.1),
                     perceptual_roughness: 0.9,
                     ..default()
                 }),
